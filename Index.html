@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chext Digital OS</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #1a1a1a; --accent: #00ff88; --worker-green: #2ecc71; --worker-red: #e74c3c; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: #0f0f0f; color: white; overflow-x: hidden; }
+        .page { display: none; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .active { display: flex; flex-direction: column; }
+        
+        /* Splash & Login */
+        .glass-card { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 400px; margin: auto; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; background: #2a2a2a; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-open { background: var(--accent); color: black; }
+        
+        /* Dashboard UI */
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; }
+        .stat-card { background: #222; padding: 15px; border-radius: 12px; border-left: 4px solid var(--accent); }
+        .worker-item { display: flex; align-items: center; justify-content: space-between; background: #2a2a2a; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
+        .status-light { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<div id="splashPage" class="page active">
+    <div style="text-align:center; margin-top: 20vh;">
+        <h1 style="letter-spacing: 5px; color: var(--accent);">CHEXT DIGITAL</h1>
+        <p style="opacity: 0.6;">Workforce Logistics & Bank Systems</p>
+        <button class="btn-open" onclick="showPage('loginPage')">OPEN SYSTEM</button>
+    </div>
+</div>
+
+<div id="loginPage" class="page">
+    <div class="glass-card">
+        <h2>System Login</h2>
+        <input type="text" id="userRole" placeholder="Role (creator / admin / worker)">
+        <input type="password" id="pass" placeholder="Access Code">
+        <button class="btn-open" onclick="authenticate()">LOGIN</button>
+    </div>
+</div>
+
+<div id="creatorPage" class="page">
+    <h2>God Mode: Creator Dash</h2>
+    <div class="grid">
+        <div class="stat-card">
+            <h4>Register New Admin</h4>
+            <input type="text" id="newAdminOrg" placeholder="Organization Name">
+            <input type="email" id="newAdminEmail" placeholder="Admin Email">
+            <button class="btn-open" onclick="addAdmin()">Add Admin & Generate Link</button>
+        </div>
+        <div class="stat-card">
+            <h4>Code Injection Terminal</h4>
+            <textarea id="creatorCode" placeholder="Enter API or Logic upgrades..."></textarea>
+            <button style="background: #9b59b6; color:white;" onclick="runInjection()">Execute System Upgrade</button>
+        </div>
+    </div>
+    <div id="adminListContainer" class="stat-card" style="margin-top: 20px;">
+        <h4>Managed Organizations</h4>
+        <div id="adminList"></div>
+    </div>
+    <button onclick="logout()" style="background:transparent; color:white; border:1px solid white;">Logout</button>
+</div>
+
+<div id="adminPage" class="page">
+    <h2 id="orgDisplay">Org Admin Dashboard</h2>
+    <div class="grid">
+        <div class="stat-card">
+            <h4>Banking: Profit/Loss Progress</h4>
+            <canvas id="bankChart" height="200"></canvas>
+            <p id="profitSummary">Calculating ROI...</p>
+        </div>
+        <div class="stat-card">
+            <h4>Logistics: Live Presence</h4>
+            <div id="workersStatusArea"></div>
+        </div>
+    </div>
+    <button onclick="logout()" style="background:transparent; color:white; border:1px solid white;">Logout</button>
+</div>
+
+<script>
+    // --- FUNCTIONAL STATE ENGINE ---
+    let admins = JSON.parse(localStorage.getItem('admins')) || [];
+    let workers = [
+        { name: "John Doe", status: "green", pos: "Site A", role: "Field Worker" },
+        { name: "Sarah Smith", status: "yellow", pos: "Home", role: "Manager" }
+    ];
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'adminPage') initBankChart();
+    }
+
+    // --- LOGIC: LOGIN ---
+    function authenticate() {
+        let role = document.getElementById('userRole').value.toLowerCase();
+        if(role === 'creator') showPage('creatorPage');
+        else if(role === 'admin') showPage('adminPage');
+        else alert("Role not authorized.");
+    }
+
+    // --- LOGIC: CREATOR ADD ADMIN ---
+    function addAdmin() {
+        let org = document.getElementById('newAdminOrg').value;
+        let email = document.getElementById('newAdminEmail').value;
+        if(org && email) {
+            admins.push({ org, email, id: Date.now() });
+            localStorage.setItem('admins', JSON.stringify(admins));
+            renderAdmins();
+            alert(`Admin Link Generated for ${org}. Sent to ${email}`);
+        }
+    }
+
+    function renderAdmins() {
+        let list = document.getElementById('adminList');
+        list.innerHTML = admins.map(a => `<div class='worker-item'>${a.org} <span>${a.email}</span></div>`).join('');
+    }
+
+    // --- LOGIC: BANKING & LOGISTICS ---
+    function initBankChart() {
+        const ctx = document.getElementById('bankChart').getContext('2d');
+        // Logic: Income vs Labor Cost
+        let income = 5000;
+        let laborCost = workers.length * 1200; 
+        let profit = income - laborCost;
+        
+        document.getElementById('profitSummary').innerText = `Net Profit: $${profit} | Efficiency: 88%`;
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Profit', 'Labor Cost', 'Operations'],
+                datasets: [{ data: [profit, laborCost, 500], backgroundColor: ['#00ff88', '#ff4444', '#3498db'] }]
+            },
+            options: { plugins: { legend: { labels: { color: 'white' } } } }
+        });
+
+        renderWorkers();
+    }
+
+    function renderWorkers() {
+        let area = document.getElementById('workersStatusArea');
+        area.innerHTML = workers.map(w => `
+            <div class="worker-item">
+                <div><div class="status-light" style="background:${w.status}"></div> ${w.name} (${w.role})</div>
+                <small>${w.pos}</small>
+            </div>
+        `).join('');
+    }
+
+    function runInjection() {
+        let code = document.getElementById('creatorCode').value;
+        try { eval(code); alert("System Upgrade Successful"); } 
+        catch(e) { alert("Error in Code Injection: " + e.message); }
+    }
+
+    function logout() { showPage('splashPage'); }
+    renderAdmins();
+</script>
+
+</body>
+          </html>
